@@ -63,16 +63,38 @@ export async function voyageEmbedding(texts: string[], apiKey: string): Promise<
   return json.data.map((d) => d.embedding);
 }
 
+// Simple LRU cache for query embeddings
+const queryCache = new Map<string, number[]>();
+const CACHE_MAX_SIZE = 100;
+
 /**
  * Get a single query embedding.
  * Uses Voyage when an API key is configured, falls back to simpleEmbedding.
+ * Caches results to avoid repeated API calls for the same/similar queries.
  */
 export async function getQueryEmbedding(text: string): Promise<number[]> {
-  if (config.voyageApiKey) {
-    const [embedding] = await voyageEmbedding([text], config.voyageApiKey);
-    return embedding;
+  const key = text.toLowerCase().trim();
+
+  const cached = queryCache.get(key);
+  if (cached) {
+    return cached;
   }
-  return simpleEmbedding(text);
+
+  let embedding: number[];
+  if (config.voyageApiKey) {
+    [embedding] = await voyageEmbedding([text], config.voyageApiKey);
+  } else {
+    embedding = simpleEmbedding(text);
+  }
+
+  // Evict oldest if full
+  if (queryCache.size >= CACHE_MAX_SIZE) {
+    const oldest = queryCache.keys().next().value!;
+    queryCache.delete(oldest);
+  }
+  queryCache.set(key, embedding);
+
+  return embedding;
 }
 
 /**
