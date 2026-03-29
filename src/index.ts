@@ -1,21 +1,23 @@
+import express from 'express';
+import { createServer } from 'http';
+import path from 'path';
 import { config } from './config.js';
 import { SessionStore } from './session/memory.js';
 import { TelegramChannel } from './channels/telegram.js';
-import { Channel } from './channels/channel.js';
+import { WebChannel } from './channels/web.js';
 import { HardcodedLLM } from './llm/hardcoded.js';
 import { Retriever, IndexedChunk } from './rag/retriever.js';
 import { loadEmbeddings } from './rag/embeddings.js';
 import { DulceGestionActions } from './actions/dulcegestion.js';
 import { BotEngine } from './engine.js';
+import { Channel } from './channels/channel.js';
 
 async function main() {
   console.log('Starting DulceChat...');
 
-  // Load embeddings (empty array if not yet indexed)
   const chunks: IndexedChunk[] = await loadEmbeddings();
   console.log(`Loaded ${chunks.length} document chunks`);
 
-  // Initialize components
   const sessions = new SessionStore({
     ttlMinutes: config.sessionTtlMinutes,
     maxHistory: config.sessionMaxHistory,
@@ -24,7 +26,6 @@ async function main() {
   const retriever = new Retriever(chunks);
   const actions = new DulceGestionActions(config.dulceGestionApiUrl);
 
-  // Select LLM adapter
   const llm = config.llmAdapter === 'claude'
     ? await createClaudeLLM()
     : new HardcodedLLM();
@@ -33,9 +34,31 @@ async function main() {
 
   const engine = new BotEngine(llm, retriever, actions, sessions);
 
-  // Start channels
   const channels: Channel[] = [];
 
+  // Express server for widget and health
+  const app = express();
+  const server = createServer(app);
+
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
+  // Serve widget files
+  const widgetDir = path.resolve('widget');
+  app.use('/widget', express.static(widgetDir));
+  app.get('/widget/chat', (_req, res) => {
+    res.sendFile(path.join(widgetDir, 'index.html'));
+  });
+  app.get('/widget.js', (_req, res) => {
+    res.sendFile(path.join(widgetDir, 'widget.js'));
+  });
+
+  // Web channel (WebSocket)
+  const web = new WebChannel(config.port, config.widgetAllowedOrigin);
+  web.onMessage((msg) => engine.handleMessage(msg));
+  web.attachToServer(server);
+  channels.push(web);
+
+  // Telegram channel
   if (config.telegramToken) {
     const telegram = new TelegramChannel(config.telegramToken);
     telegram.onMessage((msg) => engine.handleMessage(msg));
@@ -43,15 +66,19 @@ async function main() {
     channels.push(telegram);
   }
 
-  console.log(`DulceChat running with ${channels.length} channel(s)`);
+  server.listen(config.port, () => {
+    console.log(`[express] server on http://localhost:${config.port}`);
+    console.log(`[widget] http://localhost:${config.port}/widget/chat`);
+    console.log(`DulceChat running with ${channels.length} channel(s)`);
+  });
 
-  // Graceful shutdown
   const shutdown = async () => {
     console.log('\nShutting down...');
     for (const ch of channels) {
       await ch.stop();
     }
     sessions.destroy();
+    server.close();
     process.exit(0);
   };
 
@@ -60,13 +87,9 @@ async function main() {
 }
 
 async function createClaudeLLM() {
-  // Dynamic import so the Claude SDK is only loaded when needed.
-  // The module is implemented in Task 11; use a runtime path string so
-  // TypeScript does not try to resolve the module at compile time.
   const modulePath = './llm/claude.js';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mod = await import(/* @vite-ignore */ modulePath) as any;
-  return mod.ClaudeLLM(config.anthropicApiKey) as import('./llm/llm.js').LLM;
+  const { ClaudeLLM } = await import(modulePath);
+  return new ClaudeLLM(config.anthropicApiKey);
 }
 
 main().catch(console.error);
