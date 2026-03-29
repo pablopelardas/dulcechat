@@ -26,7 +26,8 @@ export class WebChannel implements Channel {
 
     this.wss.on('connection', (ws, req) => {
       const origin = req.headers.origin ?? '';
-      if (this.allowedOrigin !== '*' && !origin.includes(this.allowedOrigin)) {
+      // Allow same-origin (no origin header) and configured origins
+      if (origin && this.allowedOrigin !== '*' && !origin.includes(this.allowedOrigin)) {
         ws.close(1008, 'Origin not allowed');
         return;
       }
