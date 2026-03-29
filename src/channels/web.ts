@@ -69,7 +69,8 @@ export class WebChannel implements Channel {
 
           const reply = await this.handler(incoming);
           ws.send(JSON.stringify({ text: reply }));
-        } catch {
+        } catch (err) {
+          console.error(`[web] ${chatId}: error:`, err);
           ws.send(JSON.stringify({ text: 'Error procesando tu mensaje.' }));
         }
       });
