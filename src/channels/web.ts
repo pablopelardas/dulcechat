@@ -11,7 +11,11 @@ export class WebChannel implements Channel {
   private wss: WebSocketServer | null = null;
   private handler: MessageHandler | null = null;
 
-  constructor(private port: number, private allowedOrigin: string) {}
+  private selfOrigin: string;
+
+  constructor(private port: number, private allowedOrigin: string) {
+    this.selfOrigin = `http://localhost:${port}`;
+  }
 
   onMessage(handler: MessageHandler): void {
     this.handler = handler;
@@ -26,8 +30,15 @@ export class WebChannel implements Channel {
 
     this.wss.on('connection', (ws, req) => {
       const origin = req.headers.origin ?? '';
-      // Allow same-origin (no origin header) and configured origins
-      if (origin && this.allowedOrigin !== '*' && !origin.includes(this.allowedOrigin)) {
+      console.log(`[web] new connection from origin: "${origin}"`);
+
+      const allowed = origin === this.selfOrigin
+        || this.allowedOrigin === '*'
+        || origin.includes(this.allowedOrigin)
+        || !origin;
+
+      if (!allowed) {
+        console.log(`[web] rejected: origin "${origin}"`);
         ws.close(1008, 'Origin not allowed');
         return;
       }
@@ -36,6 +47,7 @@ export class WebChannel implements Channel {
       let authToken: string | undefined;
 
       ws.on('message', async (data) => {
+        console.log(`[web] message from ${chatId}:`, data.toString().slice(0, 100));
         if (!this.handler) return;
 
         try {
