@@ -17,15 +17,15 @@
   var bubble = document.createElement('div');
   bubble.id = 'dulcechat-bubble';
   bubble.innerHTML = chatIcon;
-  bubble.style.cssText = 'position:fixed;bottom:80px;right:16px;width:52px;height:52px;background:#ec4899;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;transition:transform 0.2s;';
+  bubble.style.cssText = 'position:fixed;bottom:80px;right:16px;width:52px;height:52px;background:#ec4899;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:10000;transition:transform 0.2s;';
   bubble.onmouseenter = function() { bubble.style.transform = 'scale(1.1)'; };
   bubble.onmouseleave = function() { bubble.style.transform = 'scale(1)'; };
 
   var container = document.createElement('div');
   var isMobile = window.innerWidth <= 640;
   container.style.cssText = isMobile
-    ? 'position:fixed;bottom:5%;left:5%;width:90%;height:85%;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.2);z-index:9999;display:none;'
-    : 'position:fixed;bottom:140px;right:16px;width:380px;height:480px;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.2);z-index:9999;display:none;';
+    ? 'position:fixed;top:60px;bottom:144px;left:5%;width:90%;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.2);z-index:9999;display:none;'
+    : 'position:fixed;top:16px;bottom:144px;right:16px;width:380px;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.2);z-index:9999;display:none;';
 
   var iframe = document.createElement('iframe');
   iframe.src = botUrl + '/widget/chat?token=' + encodeURIComponent(token);
