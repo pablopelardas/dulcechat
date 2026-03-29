@@ -9,7 +9,11 @@ import { WebChannel } from './channels/web.js';
 import { HardcodedLLM } from './llm/hardcoded.js';
 import { Retriever, IndexedChunk } from './rag/retriever.js';
 import { loadEmbeddings } from './rag/embeddings.js';
-import { DulceGestionActions } from './actions/dulcegestion.js';
+import { ToolRegistry } from './mcp/registry.js';
+import { ApiClient } from './mcp/api-client.js';
+import { ordersTool } from './mcp/tools/orders.js';
+import { stockTool } from './mcp/tools/stock.js';
+import { customersTool } from './mcp/tools/customers.js';
 import { BotEngine } from './engine.js';
 import { Channel } from './channels/channel.js';
 
@@ -25,25 +29,30 @@ async function main() {
   });
 
   const retriever = new Retriever(chunks);
-  const actions = new DulceGestionActions(config.dulceGestionApiUrl);
+
+  // MCP Tool Registry
+  const api = new ApiClient(config.dulceGestionApiUrl);
+  const tools = new ToolRegistry();
+  tools.register(ordersTool(api));
+  tools.register(stockTool(api));
+  tools.register(customersTool(api));
+  console.log(`Registered ${tools.getAll().length} MCP tools`);
 
   const llm = config.llmAdapter === 'claude'
-    ? await createClaudeLLM()
+    ? await createClaudeLLM(tools)
     : new HardcodedLLM();
 
   console.log(`Using LLM adapter: ${llm.name}`);
 
-  const engine = new BotEngine(llm, retriever, actions, sessions);
+  const engine = new BotEngine(llm, retriever, tools, sessions);
 
   const channels: Channel[] = [];
 
-  // Express server for widget and health
   const app = express();
   const server = createServer(app);
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-  // Serve widget files
   const widgetDir = path.resolve('widget');
   app.use('/widget', express.static(widgetDir));
   app.get('/widget/chat', (_req, res) => {
@@ -53,13 +62,11 @@ async function main() {
     res.sendFile(path.join(widgetDir, 'widget.js'));
   });
 
-  // Web channel (WebSocket)
   const web = new WebChannel(config.port, config.widgetAllowedOrigin);
   web.onMessage((msg) => engine.handleMessage(msg));
   web.attachToServer(server);
   channels.push(web);
 
-  // Telegram channel
   if (config.telegramToken) {
     const telegram = new TelegramChannel(config.telegramToken);
     telegram.onMessage((msg) => engine.handleMessage(msg));
@@ -67,7 +74,6 @@ async function main() {
     channels.push(telegram);
   }
 
-  // WhatsApp channel (via Twilio)
   if (config.whatsappAccountSid) {
     const whatsapp = new WhatsAppChannel(
       config.whatsappAccountSid,
@@ -100,10 +106,9 @@ async function main() {
   process.on('SIGTERM', shutdown);
 }
 
-async function createClaudeLLM() {
-  const modulePath = './llm/claude.js';
-  const { ClaudeLLM } = await import(modulePath);
-  return new ClaudeLLM(config.anthropicApiKey);
+async function createClaudeLLM(tools: ToolRegistry) {
+  const { ClaudeLLM } = await import('./llm/claude.js');
+  return new ClaudeLLM(config.anthropicApiKey, tools);
 }
 
 main().catch(console.error);

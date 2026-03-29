@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BotEngine } from '../src/engine.js';
-import { LLM, LLMRequest, LLMResponse } from '../src/llm/llm.js';
+import { LLM, LLMResponse } from '../src/llm/llm.js';
 import { Retriever, IndexedChunk } from '../src/rag/retriever.js';
-import { DulceGestionActions } from '../src/actions/dulcegestion.js';
+import { ToolRegistry } from '../src/mcp/registry.js';
 import { SessionStore } from '../src/session/memory.js';
 
 function createMockLLM(response: LLMResponse): LLM {
@@ -16,26 +16,42 @@ describe('BotEngine', () => {
   let engine: BotEngine;
   let mockLLM: LLM;
   let sessions: SessionStore;
+  let tools: ToolRegistry;
 
   beforeEach(() => {
+    // Stub fetch to intercept Voyage API calls so tests don't hit the real network
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes('voyageai.com')) {
+        return {
+          ok: true,
+          json: async () => ({ data: [{ embedding: new Array(1024).fill(0) }] }),
+        };
+      }
+      return { ok: false, status: 500, text: async () => 'Unexpected fetch call', json: async () => ({}) };
+    }));
+
     mockLLM = createMockLLM({ text: 'Hello from bot' });
     sessions = new SessionStore({ ttlMinutes: 30, maxHistory: 20 });
     const chunks: IndexedChunk[] = [];
     const retriever = new Retriever(chunks);
-    const actions = new DulceGestionActions('http://localhost:3001/api');
+    tools = new ToolRegistry();
+    tools.register({
+      name: 'ver_pedidos',
+      description: 'Ver pedidos',
+      inputSchema: { type: 'object', properties: {} },
+      execute: async () => ({ count: 1, orders: [{ id: 1, customer: 'Test', status: 'pending', date: 'lun 1/4' }] }),
+    });
 
-    engine = new BotEngine(mockLLM, retriever, actions, sessions);
+    engine = new BotEngine(mockLLM, retriever, tools, sessions);
   });
 
   afterEach(() => {
     sessions.destroy();
+    vi.unstubAllGlobals();
   });
 
   it('processes a simple message and returns response', async () => {
-    const reply = await engine.handleMessage({
-      chatId: 'chat1',
-      text: 'hola',
-    });
+    const reply = await engine.handleMessage({ chatId: 'chat1', text: 'hola' });
     expect(reply).toBe('Hello from bot');
   });
 
@@ -48,14 +64,8 @@ describe('BotEngine', () => {
   });
 
   it('executes tool call when LLM requests one', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [{ id: 1, status: 'pending', delivery_date: '2026-03-30' }],
-    });
-    vi.stubGlobal('fetch', mockFetch);
-
     const firstResponse: LLMResponse = {
-      text: 'Buscando...',
+      text: '',
       toolCall: { name: 'ver_pedidos', params: {} },
     };
     const secondResponse: LLMResponse = { text: 'Tenes 1 pedido pendiente.' };
@@ -68,28 +78,28 @@ describe('BotEngine', () => {
 
     const reply = await engine.handleMessage({
       chatId: 'chat1',
-      text: 'pedidos para mañana',
+      text: 'pedidos',
       authToken: 'valid-token',
     });
 
     expect(respondFn).toHaveBeenCalledTimes(2);
     expect(reply).toBe('Tenes 1 pedido pendiente.');
-
-    vi.unstubAllGlobals();
   });
 
-  it('returns auth error when no auth token and action requested', async () => {
-    const response: LLMResponse = {
-      text: 'Buscando...',
-      toolCall: { name: 'ver_pedidos', params: {} },
-    };
-    mockLLM.respond = vi.fn(async () => response);
-
-    const reply = await engine.handleMessage({
-      chatId: 'chat1',
-      text: 'pedidos',
+  it('returns error when tool result has error', async () => {
+    tools.register({
+      name: 'ver_fail',
+      description: 'Fails',
+      inputSchema: { type: 'object', properties: {} },
+      execute: async () => ({ error: 'No estas autenticado.' }),
     });
 
+    mockLLM.respond = vi.fn(async () => ({
+      text: '',
+      toolCall: { name: 'ver_fail', params: {} },
+    }));
+
+    const reply = await engine.handleMessage({ chatId: 'chat1', text: 'test' });
     expect(reply).toContain('autenticado');
   });
 });

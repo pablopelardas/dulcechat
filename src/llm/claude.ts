@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { LLM, LLMRequest, LLMResponse } from './llm.js';
+import { ToolRegistry } from '../mcp/registry.js';
 
 const SYSTEM_PROMPT = `Sos DulceChat, el asistente virtual de DulceGestion, una aplicacion de gestion para pastelerias y emprendimientos de reposteria.
 
@@ -15,43 +16,14 @@ Reglas:
 - Cuando presentes datos (pedidos, stock, etc.), organiza la informacion cronologicamente y de forma clara. No reagrupes ni reordenes los datos de formas confusas.
 - Se conciso. No repitas informacion ni agregues explicaciones innecesarias.`;
 
-const TOOLS: Anthropic.Tool[] = [
-  {
-    name: 'ver_pedidos',
-    description: 'Consultar pedidos del negocio. Puede filtrar por fecha y estado.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        status: { type: 'string', description: 'Estado: pending, delivered, cancelled' },
-        startDate: { type: 'string', description: 'Fecha inicio ISO (YYYY-MM-DD)' },
-        endDate: { type: 'string', description: 'Fecha fin ISO (YYYY-MM-DD)' },
-      },
-    },
-  },
-  {
-    name: 'ver_stock',
-    description: 'Ver stock actual de ingredientes y detectar faltantes.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {},
-    },
-  },
-  {
-    name: 'ver_clientes',
-    description: 'Buscar y listar clientes del negocio.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {},
-    },
-  },
-];
-
 export class ClaudeLLM implements LLM {
   name = 'claude';
   private client: Anthropic;
+  private claudeTools: Anthropic.Tool[];
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, registry?: ToolRegistry) {
     this.client = new Anthropic({ apiKey });
+    this.claudeTools = (registry?.toClaudeTools() ?? []) as Anthropic.Tool[];
   }
 
   async respond(req: LLMRequest): Promise<LLMResponse> {
@@ -79,8 +51,7 @@ export class ClaudeLLM implements LLM {
     }));
     messages.push({ role: 'user', content: req.message });
 
-    // Don't offer tools when we already have action data (prevents tool call loops)
-    const useTools = !req.actionData;
+    const useTools = !req.actionData && this.claudeTools.length > 0;
 
     const start = Date.now();
     try {
@@ -88,7 +59,7 @@ export class ClaudeLLM implements LLM {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         system: systemParts.join('\n'),
-        ...(useTools ? { tools: TOOLS } : {}),
+        ...(useTools ? { tools: this.claudeTools } : {}),
         messages,
       });
       console.log(`[claude] response in ${Date.now() - start}ms, stop: ${response.stop_reason}`);
@@ -97,7 +68,6 @@ export class ClaudeLLM implements LLM {
       return { text: 'Hubo un error consultando al asistente. Intenta de nuevo.' };
     }
 
-    // Check if Claude wants to use a tool
     const toolUse = response.content.find((block) => block.type === 'tool_use');
     if (toolUse && toolUse.type === 'tool_use') {
       return {
@@ -109,7 +79,6 @@ export class ClaudeLLM implements LLM {
       };
     }
 
-    // Extract text response
     const textBlock = response.content.find((block) => block.type === 'text');
     return {
       text: textBlock && textBlock.type === 'text' ? textBlock.text : 'No pude generar una respuesta.',
