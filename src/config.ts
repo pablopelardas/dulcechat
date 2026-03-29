@@ -10,4 +10,7 @@ export const config = {
   widgetAllowedOrigin: process.env.WIDGET_ALLOWED_ORIGIN ?? 'http://localhost:5173',
   llmAdapter: process.env.LLM_ADAPTER ?? 'hardcoded',
   port: parseInt(process.env.PORT ?? '3002', 10),
+  whatsappAccountSid: process.env.WHATSAPP_ACCOUNT_SID ?? '',
+  whatsappAuthToken: process.env.WHATSAPP_AUTH_TOKEN ?? '',
+  whatsappPhoneNumber: process.env.WHATSAPP_PHONE_NUMBER ?? '',
 };

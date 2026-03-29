@@ -4,6 +4,7 @@ import path from 'path';
 import { config } from './config.js';
 import { SessionStore } from './session/memory.js';
 import { TelegramChannel } from './channels/telegram.js';
+import { WhatsAppChannel } from './channels/whatsapp.js';
 import { WebChannel } from './channels/web.js';
 import { HardcodedLLM } from './llm/hardcoded.js';
 import { Retriever, IndexedChunk } from './rag/retriever.js';
@@ -64,6 +65,19 @@ async function main() {
     telegram.onMessage((msg) => engine.handleMessage(msg));
     await telegram.start();
     channels.push(telegram);
+  }
+
+  // WhatsApp channel (via Twilio)
+  if (config.whatsappAccountSid) {
+    const whatsapp = new WhatsAppChannel(
+      config.whatsappAccountSid,
+      config.whatsappAuthToken,
+      config.whatsappPhoneNumber,
+      app,
+    );
+    whatsapp.onMessage((msg) => engine.handleMessage(msg));
+    await whatsapp.start();
+    channels.push(whatsapp);
   }
 
   server.listen(config.port, () => {
