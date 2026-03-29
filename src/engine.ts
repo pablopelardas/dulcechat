@@ -27,17 +27,26 @@ export class BotEngine {
       ? relevantChunks.map((c) => c.text).join('\n\n---\n\n')
       : undefined;
 
-    // First LLM call
-    console.log(`[engine] ${msg.chatId}: calling ${this.llm.name}...`);
     this.sessions.addMessage(msg.chatId, 'user', msg.text);
-    let response = await this.llm.respond({
-      message: msg.text,
-      history: session.history.slice(0, -1),
-      context,
-    });
+    let actionResults: string[] = [];
+    const maxToolCalls = 5;
 
-    // If LLM wants to call a tool, execute it
-    if (response.toolCall) {
+    for (let i = 0; i <= maxToolCalls; i++) {
+      console.log(`[engine] ${msg.chatId}: calling ${this.llm.name}...`);
+      const response = await this.llm.respond({
+        message: msg.text,
+        history: session.history.slice(0, -1),
+        context,
+        actionData: actionResults.length > 0 ? actionResults.join('\n\n---\n\n') : undefined,
+      });
+
+      // If no tool call, we have the final response
+      if (!response.toolCall) {
+        this.sessions.addMessage(msg.chatId, 'assistant', response.text);
+        return response.text;
+      }
+
+      // Execute tool call
       const authToken = session.authToken ?? '';
       const action = this.actions.get(response.toolCall.name);
 
@@ -47,26 +56,20 @@ export class BotEngine {
         return reply;
       }
 
-      console.log(`[engine] ${msg.chatId}: tool call -> ${response.toolCall.name}`);
+      console.log(`[engine] ${msg.chatId}: tool call -> ${response.toolCall.name}(${JSON.stringify(response.toolCall.params)})`);
       const actionResult = await action.execute(response.toolCall.params, authToken);
 
-      // If no auth token and action needs one
       if (actionResult.includes('autenticado')) {
         this.sessions.addMessage(msg.chatId, 'assistant', actionResult);
         return actionResult;
       }
 
-      // Second LLM call with action data
-      console.log(`[engine] ${msg.chatId}: calling ${this.llm.name} with action data...`);
-      response = await this.llm.respond({
-        message: msg.text,
-        history: session.history.slice(0, -1),
-        context,
-        actionData: actionResult,
-      });
+      actionResults.push(actionResult);
     }
 
-    this.sessions.addMessage(msg.chatId, 'assistant', response.text);
-    return response.text;
+    // If we exhaust the loop, return what we have
+    const fallback = 'No pude completar la consulta. Intenta con una pregunta mas especifica.';
+    this.sessions.addMessage(msg.chatId, 'assistant', fallback);
+    return fallback;
   }
 }
