@@ -76,13 +76,16 @@ export class ClaudeLLM implements LLM {
     }));
     messages.push({ role: 'user', content: req.message });
 
+    // Don't offer tools when we already have action data (prevents tool call loops)
+    const useTools = !req.actionData;
+
     const start = Date.now();
     try {
       var response = await this.client.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         system: systemParts.join('\n'),
-        tools: TOOLS,
+        ...(useTools ? { tools: TOOLS } : {}),
         messages,
       });
       console.log(`[claude] response in ${Date.now() - start}ms, stop: ${response.stop_reason}`);

@@ -27,26 +27,17 @@ export class BotEngine {
       ? relevantChunks.map((c) => c.text).join('\n\n---\n\n')
       : undefined;
 
+    // First LLM call — may request a tool
     this.sessions.addMessage(msg.chatId, 'user', msg.text);
-    let actionResults: string[] = [];
-    const maxToolCalls = 5;
+    console.log(`[engine] ${msg.chatId}: calling ${this.llm.name}...`);
+    let response = await this.llm.respond({
+      message: msg.text,
+      history: session.history.slice(0, -1),
+      context,
+    });
 
-    for (let i = 0; i <= maxToolCalls; i++) {
-      console.log(`[engine] ${msg.chatId}: calling ${this.llm.name}...`);
-      const response = await this.llm.respond({
-        message: msg.text,
-        history: session.history.slice(0, -1),
-        context,
-        actionData: actionResults.length > 0 ? actionResults.join('\n\n---\n\n') : undefined,
-      });
-
-      // If no tool call, we have the final response
-      if (!response.toolCall) {
-        this.sessions.addMessage(msg.chatId, 'assistant', response.text);
-        return response.text;
-      }
-
-      // Execute tool call
+    // If LLM wants to call a tool, execute it
+    if (response.toolCall) {
       const authToken = session.authToken ?? '';
       const action = this.actions.get(response.toolCall.name);
 
@@ -64,12 +55,17 @@ export class BotEngine {
         return actionResult;
       }
 
-      actionResults.push(actionResult);
+      // Second LLM call with action data — no tools, just answer
+      console.log(`[engine] ${msg.chatId}: calling ${this.llm.name} with action data...`);
+      response = await this.llm.respond({
+        message: msg.text,
+        history: session.history.slice(0, -1),
+        context,
+        actionData: actionResult,
+      });
     }
 
-    // If we exhaust the loop, return what we have
-    const fallback = 'No pude completar la consulta. Intenta con una pregunta mas especifica.';
-    this.sessions.addMessage(msg.chatId, 'assistant', fallback);
-    return fallback;
+    this.sessions.addMessage(msg.chatId, 'assistant', response.text);
+    return response.text;
   }
 }
