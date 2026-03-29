@@ -22,17 +22,17 @@ Ve a Principal > Pedidos > Nuevo pedido.
 Elige un cliente existente o crea uno nuevo.`;
 
 describe('chunkMarkdown', () => {
-  it('splits markdown by top-level headers', () => {
+  it('splits markdown by h1 and h2 headers', () => {
     const chunks = chunkMarkdown(SAMPLE_DOC, 'test.md');
-    expect(chunks.length).toBe(2);
+    // # Como crear una receta, ## Paso 1, ## Paso 2, # Como crear un pedido, ## Seleccionar cliente
+    expect(chunks.length).toBe(5);
     expect(chunks[0].source).toBe('test.md');
   });
 
   it('preserves content within each chunk', () => {
     const chunks = chunkMarkdown(SAMPLE_DOC, 'test.md');
     expect(chunks[0].text).toContain('Produccion > Recetas');
-    expect(chunks[0].text).toContain('Paso 1');
-    expect(chunks[1].text).toContain('Seleccionar cliente');
+    expect(chunks[4].text).toContain('Elige un cliente');
   });
 
   it('includes the header in the chunk text', () => {

@@ -9,7 +9,8 @@ export function chunkMarkdown(content: string, source: string): Chunk[] {
   let currentLines: string[] = [];
 
   for (const line of lines) {
-    if (line.startsWith('# ') && currentLines.length > 0) {
+    // Split on ## headers (not just #) to get smaller, focused chunks
+    if (/^#{1,2} /.test(line) && currentLines.length > 0) {
       chunks.push({ text: currentLines.join('\n').trim(), source });
       currentLines = [line];
     } else {
