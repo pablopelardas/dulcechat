@@ -52,7 +52,15 @@ export class ClaudeLLM implements LLM {
   }
 
   async respond(req: LLMRequest): Promise<LLMResponse> {
-    const systemParts: string[] = [SYSTEM_PROMPT];
+    const today = new Date().toLocaleDateString('es-AR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const todayISO = new Date().toISOString().split('T')[0];
+
+    const systemParts: string[] = [
+      SYSTEM_PROMPT,
+      `\nFecha actual: ${today} (${todayISO}). Usa esta fecha para interpretar "hoy", "mañana", "la semana que viene", etc.`,
+    ];
 
     if (req.context) {
       systemParts.push(`\nDocumentacion relevante:\n${req.context}`);

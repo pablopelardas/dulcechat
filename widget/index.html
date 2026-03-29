@@ -33,9 +33,12 @@
       padding: 8px 12px;
       border-radius: 12px;
       font-size: 14px;
-      line-height: 1.4;
-      white-space: pre-wrap;
+      line-height: 1.5;
     }
+    .message ul, .message ol { margin: 4px 0; padding-left: 20px; }
+    .message li { margin: 2px 0; }
+    .message p { margin: 4px 0; }
+    .message strong { font-weight: 600; }
     .message.user {
       align-self: flex-end;
       background: #ec4899;
@@ -124,10 +127,31 @@
 
     connect();
 
+    function simpleMarkdown(text) {
+      // Escape HTML first
+      var safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Bold: **text**
+      safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      // Unordered lists: lines starting with -
+      safe = safe.replace(/^- (.+)$/gm, '<li>$1</li>');
+      safe = safe.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+      // Ordered lists: lines starting with number.
+      safe = safe.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+      // Paragraphs: double newlines
+      safe = safe.replace(/\n\n/g, '</p><p>');
+      // Single newlines within paragraphs
+      safe = safe.replace(/\n/g, '<br>');
+      return '<p>' + safe + '</p>';
+    }
+
     function addMessage(text, role) {
-      const div = document.createElement('div');
-      div.className = `message ${role}`;
-      div.textContent = text;
+      var div = document.createElement('div');
+      div.className = 'message ' + role;
+      if (role === 'assistant') {
+        div.innerHTML = simpleMarkdown(text);
+      } else {
+        div.textContent = text;
+      }
       messages.appendChild(div);
       messages.scrollTop = messages.scrollHeight;
     }
