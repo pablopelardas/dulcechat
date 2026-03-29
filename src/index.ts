@@ -14,6 +14,10 @@ import { ApiClient } from './mcp/api-client.js';
 import { ordersTool } from './mcp/tools/orders.js';
 import { stockTool } from './mcp/tools/stock.js';
 import { customersTool } from './mcp/tools/customers.js';
+import { searchItemsTool } from './mcp/tools/search-items.js';
+import { createOrderTool } from './mcp/tools/create-order.js';
+import { createCustomerTool } from './mcp/tools/create-customer.js';
+import { createDiscountTool } from './mcp/tools/create-discount.js';
 import { BotEngine } from './engine.js';
 import { Channel } from './channels/channel.js';
 
@@ -36,6 +40,10 @@ async function main() {
   tools.register(ordersTool(api));
   tools.register(stockTool(api));
   tools.register(customersTool(api));
+  tools.register(searchItemsTool(api));
+  tools.register(createOrderTool(api));
+  tools.register(createCustomerTool(api));
+  tools.register(createDiscountTool(api));
   console.log(`Registered ${tools.getAll().length} MCP tools`);
 
   const llm = config.llmAdapter === 'claude'
