@@ -76,13 +76,20 @@ export class ClaudeLLM implements LLM {
     }));
     messages.push({ role: 'user', content: req.message });
 
-    const response = await this.client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: systemParts.join('\n'),
-      tools: TOOLS,
-      messages,
-    });
+    const start = Date.now();
+    try {
+      var response = await this.client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: systemParts.join('\n'),
+        tools: TOOLS,
+        messages,
+      });
+      console.log(`[claude] response in ${Date.now() - start}ms, stop: ${response.stop_reason}`);
+    } catch (err: any) {
+      console.error(`[claude] error after ${Date.now() - start}ms:`, err.message);
+      return { text: 'Hubo un error consultando al asistente. Intenta de nuevo.' };
+    }
 
     // Check if Claude wants to use a tool
     const toolUse = response.content.find((block) => block.type === 'tool_use');
