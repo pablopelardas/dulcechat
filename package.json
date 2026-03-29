@@ -11,7 +11,8 @@
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "index-docs": "tsx src/rag/embeddings.ts"
+    "index-docs": "tsx src/rag/embeddings.ts",
+    "mcp": "tsx src/mcp/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,9 +20,11 @@
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
+    "@modelcontextprotocol/sdk": "^1.28.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "telegraf": "^4.16.3",
+    "voyageai": "^0.2.1",
     "ws": "^8.20.0"
   },
   "devDependencies": {
