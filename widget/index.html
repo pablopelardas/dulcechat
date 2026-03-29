@@ -102,7 +102,9 @@
     const params = new URLSearchParams(window.location.search);
     const authToken = params.get('token') || '';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+    // Derive base path from URL: /dulcechat/widget/chat -> /dulcechat
+    const basePath = window.location.pathname.replace(/\/widget\/chat.*$/, '');
+    const wsUrl = `${wsProtocol}//${window.location.host}${basePath}/ws`;
 
     let ws;
 
