@@ -26,10 +26,15 @@ export class Retriever {
 
       // Boost score with keyword matching for better results with simple embeddings
       if (queryText) {
-        const keywords = queryText.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
-        const chunkLower = chunk.text.toLowerCase();
-        const matches = keywords.filter((kw) => chunkLower.includes(kw)).length;
-        score += matches * 0.1;
+        const normalize = (s: string) => s.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // strip accents
+        const keywords = normalize(queryText).split(/\W+/).filter((w) => w.length > 2);
+        const chunkNorm = normalize(chunk.text);
+        const matches = keywords.filter((kw) => chunkNorm.includes(kw)).length;
+        // Also boost if source filename matches a keyword
+        const sourceNorm = normalize(chunk.source);
+        const sourceMatch = keywords.some((kw) => sourceNorm.includes(kw)) ? 0.3 : 0;
+        score += matches * 0.15 + sourceMatch;
       }
 
       return { chunk, score };
