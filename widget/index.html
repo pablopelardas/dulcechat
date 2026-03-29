@@ -114,6 +114,8 @@
         sendBtn.disabled = false;
       };
 
+      ws.onerror = () => {};
+
       ws.onclose = () => {
         sendBtn.disabled = true;
         setTimeout(connect, 2000);
