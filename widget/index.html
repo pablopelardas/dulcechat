@@ -35,9 +35,14 @@
       font-size: 14px;
       line-height: 1.5;
     }
+    .message h2 { font-size: 14px; font-weight: 700; margin: 8px 0 4px; }
+    .message h3 { font-size: 13px; font-weight: 600; margin: 6px 0 2px; }
     .message ul, .message ol { margin: 4px 0; padding-left: 20px; }
+    .message ol { list-style: decimal; }
     .message li { margin: 2px 0; }
     .message p { margin: 4px 0; }
+    .message p:first-child { margin-top: 0; }
+    .message p:last-child { margin-bottom: 0; }
     .message strong { font-weight: 600; }
     .message.user {
       align-self: flex-end;
@@ -128,20 +133,37 @@
     connect();
 
     function simpleMarkdown(text) {
-      // Escape HTML first
       var safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      // Bold: **text**
+      // Headers
+      safe = safe.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      safe = safe.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      // Bold
       safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      // Unordered lists: lines starting with -
-      safe = safe.replace(/^- (.+)$/gm, '<li>$1</li>');
-      safe = safe.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-      // Ordered lists: lines starting with number.
-      safe = safe.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-      // Paragraphs: double newlines
-      safe = safe.replace(/\n\n/g, '</p><p>');
-      // Single newlines within paragraphs
-      safe = safe.replace(/\n/g, '<br>');
-      return '<p>' + safe + '</p>';
+      // Process line by line for lists
+      var lines = safe.split('\n');
+      var result = [];
+      var inUl = false, inOl = false;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var ulMatch = line.match(/^- (.+)$/);
+        var olMatch = line.match(/^\d+\. (.+)$/);
+        if (ulMatch) {
+          if (!inUl) { if (inOl) { result.push('</ol>'); inOl = false; } result.push('<ul>'); inUl = true; }
+          result.push('<li>' + ulMatch[1] + '</li>');
+        } else if (olMatch) {
+          if (!inOl) { if (inUl) { result.push('</ul>'); inUl = false; } result.push('<ol>'); inOl = true; }
+          result.push('<li>' + olMatch[1] + '</li>');
+        } else {
+          if (inUl) { result.push('</ul>'); inUl = false; }
+          if (inOl) { result.push('</ol>'); inOl = false; }
+          if (line.match(/^<h[23]>/)) { result.push(line); }
+          else if (line.trim() === '') { result.push('</p><p>'); }
+          else { result.push(line); }
+        }
+      }
+      if (inUl) result.push('</ul>');
+      if (inOl) result.push('</ol>');
+      return '<p>' + result.join('\n') + '</p>';
     }
 
     function addMessage(text, role) {
