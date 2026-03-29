@@ -93,21 +93,34 @@
 
     const params = new URLSearchParams(window.location.search);
     const authToken = params.get('token') || '';
-
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
 
-    ws.onopen = () => {
-      if (authToken) {
-        ws.send(JSON.stringify({ text: '__auth__', authToken }));
-      }
-    };
+    let ws;
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      addMessage(data.text, 'assistant');
-      sendBtn.disabled = false;
-    };
+    function connect() {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        sendBtn.disabled = false;
+        if (authToken) {
+          ws.send(JSON.stringify({ text: '__auth__', authToken }));
+        }
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        addMessage(data.text, 'assistant');
+        sendBtn.disabled = false;
+      };
+
+      ws.onclose = () => {
+        sendBtn.disabled = true;
+        setTimeout(connect, 2000);
+      };
+    }
+
+    connect();
 
     function addMessage(text, role) {
       const div = document.createElement('div');
@@ -119,7 +132,7 @@
 
     function send() {
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || ws.readyState !== WebSocket.OPEN) return;
       addMessage(text, 'user');
       ws.send(JSON.stringify({ text, authToken }));
       input.value = '';
