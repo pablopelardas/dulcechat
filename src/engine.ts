@@ -28,6 +28,7 @@ export class BotEngine {
       : undefined;
 
     // First LLM call
+    console.log(`[engine] ${msg.chatId}: calling ${this.llm.name}...`);
     this.sessions.addMessage(msg.chatId, 'user', msg.text);
     let response = await this.llm.respond({
       message: msg.text,
@@ -46,6 +47,7 @@ export class BotEngine {
         return reply;
       }
 
+      console.log(`[engine] ${msg.chatId}: tool call -> ${response.toolCall.name}`);
       const actionResult = await action.execute(response.toolCall.params, authToken);
 
       // If no auth token and action needs one
@@ -55,6 +57,7 @@ export class BotEngine {
       }
 
       // Second LLM call with action data
+      console.log(`[engine] ${msg.chatId}: calling ${this.llm.name} with action data...`);
       response = await this.llm.respond({
         message: msg.text,
         history: session.history.slice(0, -1),

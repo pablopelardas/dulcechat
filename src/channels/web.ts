@@ -47,7 +47,6 @@ export class WebChannel implements Channel {
       let authToken: string | undefined;
 
       ws.on('message', async (data) => {
-        console.log(`[web] message from ${chatId}:`, data.toString().slice(0, 100));
         if (!this.handler) return;
 
         try {
@@ -56,6 +55,11 @@ export class WebChannel implements Channel {
           if (parsed.authToken) {
             authToken = parsed.authToken;
           }
+
+          // Skip auth-only messages (no real text to process)
+          if (parsed.text === '__auth__') return;
+
+          console.log(`[web] ${chatId}: ${parsed.text.slice(0, 80)}`);
 
           const incoming: IncomingMessage = {
             chatId,
