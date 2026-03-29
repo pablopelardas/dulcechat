@@ -84,12 +84,14 @@ export class DulceGestionActions {
     const orders = result.data as OrderSummary[];
     if (orders.length === 0) return 'No hay pedidos para el periodo consultado.';
 
-    const lines = orders.slice(0, 10).map((o) => {
+    const lines = orders.slice(0, 15).map((o) => {
       const customer = o.customer?.name ?? 'Sin cliente';
-      return `- Pedido #${o.id}: ${o.status} | ${customer} | Entrega: ${o.delivery_date}`;
+      const date = new Date(o.delivery_date);
+      const dayName = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+      return `- Pedido #${o.id} | ${customer} | ${o.status} | Entrega: ${dayName}`;
     });
 
-    const header = `Encontre ${orders.length} pedido${orders.length === 1 ? '' : 's'}:`;
+    const header = `${orders.length} pedido${orders.length === 1 ? '' : 's'}:`;
     return [header, ...lines].join('\n');
   }
 
