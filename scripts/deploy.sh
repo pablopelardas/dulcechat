@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VPS_HOST="31.97.173.157"
+VPS_HOST="${VPS_HOST:-your-vps-ip}"
 VPS_USER="root"
 APP_DIR="/var/www/dulcechat"
 
