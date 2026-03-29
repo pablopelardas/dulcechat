@@ -18,7 +18,7 @@ import { BotEngine } from './engine.js';
 import { Channel } from './channels/channel.js';
 
 async function main() {
-  console.log('Starting DulceChat...');
+  console.log('Starting Caramelo...');
 
   const chunks: IndexedChunk[] = await loadEmbeddings();
   console.log(`Loaded ${chunks.length} document chunks`);
@@ -89,7 +89,7 @@ async function main() {
   server.listen(config.port, () => {
     console.log(`[express] server on http://localhost:${config.port}`);
     console.log(`[widget] http://localhost:${config.port}/widget/chat`);
-    console.log(`DulceChat running with ${channels.length} channel(s)`);
+    console.log(`Caramelo running with ${channels.length} channel(s)`);
   });
 
   const shutdown = async () => {

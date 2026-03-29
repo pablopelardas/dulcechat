@@ -18,7 +18,7 @@ export class TelegramChannel implements Channel {
 
   async start(): Promise<void> {
     this.bot.command('start', async (ctx) => {
-      await ctx.reply('¡Hola! Soy DulceChat, tu asistente de DulceGestion. Preguntame lo que necesites sobre la app o tu negocio.');
+      await ctx.reply('¡Hola! Soy Caramelo, tu asistente de DulceGestion. Preguntame lo que necesites sobre la app o tu negocio.');
     });
 
     this.bot.on('text', async (ctx) => {

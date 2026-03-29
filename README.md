@@ -1,4 +1,4 @@
-# DulceChat
+# Caramelo
 
 Multi-channel chatbot for [DulceGestion](https://dulcegestion.ar) - a pastry shop management SaaS.
 
@@ -117,4 +117,4 @@ widget/            # Embeddable chat widget (HTML + JS)
 
 1. Create `src/mcp/tools/your-tool.ts` implementing `McpTool`
 2. Register it in `src/index.ts`
-3. Automatically available in DulceChat, Claude Desktop, and Claude Code
+3. Automatically available in Caramelo, Claude Desktop, and Claude Code

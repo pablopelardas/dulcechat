@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { LLM, LLMRequest, LLMResponse } from './llm.js';
 import { ToolRegistry } from '../mcp/registry.js';
 
-const SYSTEM_PROMPT = `Sos DulceChat, el asistente virtual de DulceGestion, una aplicacion de gestion para pastelerias y emprendimientos de reposteria.
+const SYSTEM_PROMPT = `Sos Caramelo, el asistente virtual de DulceGestion, una aplicacion de gestion para pastelerias y emprendimientos de reposteria.
 
 Tu rol es:
 - Responder preguntas sobre como usar la aplicacion

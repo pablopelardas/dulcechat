@@ -6,7 +6,7 @@ describe('HardcodedLLM', () => {
 
   it('responds to greetings', async () => {
     const res = await llm.respond({ message: 'hola', history: [] });
-    expect(res.text).toContain('DulceChat');
+    expect(res.text).toContain('Caramelo');
   });
 
   it('responds to order-related keywords with tool call', async () => {

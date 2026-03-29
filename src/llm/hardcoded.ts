@@ -17,7 +17,7 @@ export class HardcodedLLM implements LLM {
     const { message, context } = req;
 
     if (matchesAny(message, GREETINGS)) {
-      return { text: '¡Hola! Soy DulceChat, tu asistente de DulceGestion. ¿En qué puedo ayudarte?' };
+      return { text: '¡Hola! Soy Caramelo, tu asistente de DulceGestion. ¿En qué puedo ayudarte?' };
     }
 
     if (matchesAny(message, ORDER_KEYWORDS)) {
