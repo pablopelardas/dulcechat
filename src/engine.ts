@@ -22,7 +22,7 @@ export class BotEngine {
 
     // Search for relevant documentation
     const queryEmbedding = simpleEmbedding(msg.text);
-    const relevantChunks = this.retriever.search(queryEmbedding, 2, msg.text);
+    const relevantChunks = this.retriever.search(queryEmbedding, 3, msg.text);
     const context = relevantChunks.length > 0
       ? relevantChunks.map((c) => c.text).join('\n\n---\n\n')
       : undefined;
