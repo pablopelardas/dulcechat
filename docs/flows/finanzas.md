@@ -80,8 +80,8 @@ Ranking de tus productos mas vendidos:
 
 ### Registrar un gasto
 
-1. Anda a **Gastos** en el menu (o desde el acceso rapido en Finanzas).
-2. Toca **Nuevo Gasto**.
+1. Anda a **Compras** en el menu (o desde el acceso rapido en Finanzas).
+2. Toca **Nueva Compra**.
 3. Completa:
    - **Descripcion** (obligatorio): por ejemplo "Compra de ingredientes en el mayorista".
    - **Monto** (obligatorio): el total del gasto.

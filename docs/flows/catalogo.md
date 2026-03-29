@@ -34,6 +34,8 @@ Podes cambiar el formato en cualquier momento desde Configuraciones.
 
 Solo aparecen los productos que tengan marcada la opcion **Es publico** en su ficha de producto. Los productos privados no se muestran.
 
+**Importante**: las recetas no aparecen directamente en el catalogo. Primero tenes que crear un Producto (en la seccion **Productos**), vincularle las recetas que lo componen, y marcarlo como publico. Para el paso a paso de como crear productos, consulta [productos.md](productos.md).
+
 Cada producto del catalogo muestra:
 - Nombre y descripcion.
 - Imagen (si tiene).

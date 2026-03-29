@@ -108,6 +108,21 @@ Si la receta esta en uso, el sistema te va a indicar donde esta referenciada par
 
 Si le pusiste un precio fijo (manual) a un producto que usa esta receta, y el costo de los ingredientes sube, el sistema te avisa que el margen real bajo. Esto aparece en el dashboard como "recetas en riesgo". Las recetas con margen porcentual no tienen este problema porque el precio sugerido sube automaticamente con el costo.
 
+## Recetas y el catalogo
+
+Una duda comun: "cargue mi receta, pero no aparece en el catalogo". Esto es porque las recetas no se publican directamente en el catalogo. Las recetas son tu herramienta interna de costeo y produccion.
+
+Para que algo aparezca en el catalogo, necesitas crear un **Producto** que contenga esa receta (o varias). El producto es lo que ven tus clientes: tiene su propio nombre, descripcion, imagenes, precio y la opcion "Es publico" que lo hace visible en el catalogo.
+
+El flujo es:
+
+1. Creas la receta (aca en Recetas).
+2. Creas un producto en **Productos** y le vinculas la receta.
+3. Marcas el producto como publico.
+4. Listo, aparece en tu catalogo.
+
+Para mas detalles sobre como crear y configurar productos, consulta [productos.md](productos.md).
+
 ## Limites del plan
 
 - **Plan Emprendedor (gratis)**: hasta 20 recetas.
