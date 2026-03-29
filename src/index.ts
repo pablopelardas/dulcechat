@@ -55,6 +55,50 @@ async function main() {
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+  // Docs endpoint for help page
+  const docsDir = path.resolve('docs/flows');
+  app.use('/docs', (_req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    next();
+  });
+  app.get('/docs', async (_req, res) => {
+    try {
+      const { readdir, readFile } = await import('fs/promises');
+      const files = await readdir(docsDir);
+      const docOrder = [
+        'stock', 'recetas', 'productos', 'catalogo', 'clientes',
+        'pedidos', 'venta-rapida', 'produccion', 'descuentos', 'finanzas', 'configuracion',
+      ];
+      const mdFiles = files.filter((f: string) => f.endsWith('.md'));
+      const docs = await Promise.all(
+        mdFiles.map(async (f: string) => {
+          const content = await readFile(path.join(docsDir, f), 'utf-8');
+          const title = content.match(/^#\s+(.+)/m)?.[1] ?? f.replace('.md', '');
+          const sections = [...content.matchAll(/^##\s+(.+)/gm)].map((m) => m[1]);
+          const slug = f.replace('.md', '');
+          const order = docOrder.indexOf(slug);
+          return { slug, title, sections, order: order >= 0 ? order : 999 };
+        }),
+      );
+      docs.sort((a, b) => a.order - b.order);
+      res.json(docs.map(({ order: _, ...d }) => d));
+    } catch {
+      res.json([]);
+    }
+  });
+
+  app.get('/docs/:slug', async (req, res) => {
+    try {
+      const { readFile } = await import('fs/promises');
+      const filePath = path.join(docsDir, `${req.params.slug}.md`);
+      const content = await readFile(filePath, 'utf-8');
+      const title = content.match(/^#\s+(.+)/m)?.[1] ?? req.params.slug;
+      res.json({ slug: req.params.slug, title, content });
+    } catch {
+      res.status(404).json({ error: 'Doc not found' });
+    }
+  });
+
   const widgetDir = path.resolve('widget');
   app.use('/widget', express.static(widgetDir));
   app.get('/widget/chat', (_req, res) => {
