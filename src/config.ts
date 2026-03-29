@@ -13,4 +13,5 @@ export const config = {
   whatsappAccountSid: process.env.WHATSAPP_ACCOUNT_SID ?? '',
   whatsappAuthToken: process.env.WHATSAPP_AUTH_TOKEN ?? '',
   whatsappPhoneNumber: process.env.WHATSAPP_PHONE_NUMBER ?? '',
+  voyageApiKey: process.env.VOYAGE_API_KEY ?? '',
 };

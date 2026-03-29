@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { chunkMarkdown, Chunk } from './chunker.js';
 import { IndexedChunk } from './retriever.js';
+import { config } from '../config.js';
 
 const DATA_DIR = path.resolve('data');
 const EMBEDDINGS_FILE = path.join(DATA_DIR, 'embeddings.json');
@@ -40,8 +41,43 @@ export async function loadDocs(): Promise<Chunk[]> {
 }
 
 /**
+ * Voyage AI embedding — batches multiple texts in a single API call.
+ * Returns one embedding vector per input text.
+ */
+export async function voyageEmbedding(texts: string[], apiKey: string): Promise<number[][]> {
+  const response = await fetch('https://api.voyageai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ input: texts, model: 'voyage-3-lite' }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Voyage API error ${response.status}: ${body}`);
+  }
+
+  const json = await response.json() as { data: { embedding: number[] }[] };
+  return json.data.map((d) => d.embedding);
+}
+
+/**
+ * Get a single query embedding.
+ * Uses Voyage when an API key is configured, falls back to simpleEmbedding.
+ */
+export async function getQueryEmbedding(text: string): Promise<number[]> {
+  if (config.voyageApiKey) {
+    const [embedding] = await voyageEmbedding([text], config.voyageApiKey);
+    return embedding;
+  }
+  return simpleEmbedding(text);
+}
+
+/**
  * Simple TF-based embedding for development/testing.
- * Will be replaced with Voyage embeddings when we connect Claude adapter.
+ * Kept as fallback when no Voyage API key is configured.
  */
 export function simpleEmbedding(text: string): number[] {
   const words = text.toLowerCase().split(/\W+/).filter(Boolean);
@@ -70,11 +106,37 @@ export function simpleEmbedding(text: string): number[] {
 if (process.argv[1]?.endsWith('embeddings.ts') || process.argv[1]?.endsWith('embeddings.js')) {
   loadDocs().then(async (chunks) => {
     console.log(`Found ${chunks.length} chunks from docs/flows/`);
-    const indexed = chunks.map((c) => ({
+
+    let embeddings: number[][];
+    if (config.voyageApiKey) {
+      console.log('Using Voyage AI embeddings (voyage-3-lite)...');
+      const texts = chunks.map((c) => c.text);
+      // Voyage free tier: 3 RPM / 10K TPM — batch in groups of 20 with delays
+      const BATCH_SIZE = 20;
+      const BATCH_DELAY_MS = 22000; // ~22s between batches to stay under 3 RPM
+      embeddings = [];
+      for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+        const batch = texts.slice(i, i + BATCH_SIZE);
+        if (i > 0) {
+          console.log(`  Waiting ${BATCH_DELAY_MS / 1000}s before next batch (rate limit)...`);
+          await new Promise((res) => setTimeout(res, BATCH_DELAY_MS));
+        }
+        console.log(`  Embedding chunks ${i + 1}–${Math.min(i + BATCH_SIZE, texts.length)} of ${texts.length}...`);
+        const batchEmbeddings = await voyageEmbedding(batch, config.voyageApiKey);
+        embeddings.push(...batchEmbeddings);
+      }
+      console.log(`Generated ${embeddings.length} Voyage embeddings`);
+    } else {
+      console.log('No VOYAGE_API_KEY found — using simple hash embeddings (fallback)');
+      embeddings = chunks.map((c) => simpleEmbedding(c.text));
+    }
+
+    const indexed: IndexedChunk[] = chunks.map((c, i) => ({
       ...c,
-      embedding: simpleEmbedding(c.text),
+      embedding: embeddings[i],
     }));
+
     await saveEmbeddings(indexed);
-    console.log(`Saved ${indexed.length} embeddings (simple mode)`);
+    console.log(`Saved ${indexed.length} embeddings (${config.voyageApiKey ? 'Voyage AI' : 'simple'} mode)`);
   });
 }
